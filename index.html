@@ -108,10 +108,10 @@
             if (servoChar) servoChar.writeValue(new TextEncoder().encode(val));
         }
 
-        function fireGun() {
+        function fireGun(cmd) {
             if (gunChar) {
                 // Send 'F' for Fire. The ESP32 handles the timing.
-                gunChar.writeValue(new TextEncoder().encode('F'))
+                gunChar.writeValue(new TextEncoder().encode(cmd))
                     .catch(err => console.log("Gun Error:", err));
             }
         }
