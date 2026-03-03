@@ -33,9 +33,9 @@
         async function connectBLE() {
             try {
                 const device = await navigator.bluetooth.requestDevice({
-                    filters: [{ name: 'Lazy Queen BLE' }],
-                    optionalServices: [SERVICE_UUID]
-                });
+    acceptAllDevices: true, // This bypasses the name filter
+    optionalServices: [SERVICE_UUID]
+});
                 const server = await device.gatt.connect();
                 const service = await server.getPrimaryService(SERVICE_UUID);
                 driveChar = await service.getCharacteristic(DRIVE_UUID);
