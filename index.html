@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>ESP32 Robot Control</title>
+    <style>
+        body { font-family: Arial; text-align: center; background: #222; color: white; }
+        .btn { padding: 20px 40px; font-size: 20px; margin: 10px; cursor: pointer; border-radius: 10px; border: none; }
+        .drive-btn { background: #444; color: white; }
+        .connect-btn { background: #28a745; color: white; }
+        input[type=range] { width: 80%; margin-top: 30px; }
+    </style>
+</head>
+<body>
+    <h1>Robot Dashboard</h1>
+    <button class="btn connect-btn" onclick="connectBLE()">Connect Robot</button>
+    <div id="controls" style="display:none;">
+        <p>Driving Control</p>
+        <button class="btn drive-btn" onmousedown="sendDrive('F')" onmouseup="sendDrive('S')">UP</button><br>
+        <button class="btn drive-btn" onmousedown="sendDrive('L')" onmouseup="sendDrive('S')">LEFT</button>
+        <button class="btn drive-btn" onmousedown="sendDrive('R')" onmouseup="sendDrive('S')">RIGHT</button><br>
+        <button class="btn drive-btn" onmousedown="sendDrive('B')" onmouseup="sendDrive('S')">DOWN</button>
+        
+        <p>Servo Angle: <span id="angleVal">90</span>°</p>
+        <input type="range" min="0" max="180" value="90" oninput="updateServo(this.value)">
+    </div>
+
+    <script>
+        let driveChar, servoChar;
+        const SERVICE_UUID = "4fafc201-1fb5-459e-8fcc-c5c9c331914b";
+        const DRIVE_UUID   = "beb5483e-36e1-4688-b7f5-ea07361b26a8";
+        const SERVO_UUID   = "82250682-3b71-405e-ad61-344406560447";
+
+        async function connectBLE() {
+            try {
+                const device = await navigator.bluetooth.requestDevice({
+                    filters: [{ name: 'Lazy Queen BLE' }],
+                    optionalServices: [SERVICE_UUID]
+                });
+                const server = await device.gatt.connect();
+                const service = await server.getPrimaryService(SERVICE_UUID);
+                driveChar = await service.getCharacteristic(DRIVE_UUID);
+                servoChar = await service.getCharacteristic(SERVO_UUID);
+                document.getElementById('controls').style.display = 'block';
+                alert("Connected!");
+            } catch (error) { console.log(error); }
+        }
+
+        function sendDrive(cmd) {
+            if (driveChar) driveChar.writeValue(new TextEncoder().encode(cmd));
+        }
+
+        function updateServo(val) {
+            document.getElementById('angleVal').innerText = val;
+            if (servoChar) servoChar.writeValue(new TextEncoder().encode(val));
+        }
+    </script>
+</body>
+</html>
