@@ -31,20 +31,29 @@
         const SERVO_UUID   = "82250682-3b71-405e-ad61-344406560447";
 
         async function connectBLE() {
-            try {
-                const device = await navigator.bluetooth.requestDevice({
-    acceptAllDevices: true, // This bypasses the name filter
-    optionalServices: [SERVICE_UUID]
-});
-                const server = await device.gatt.connect();
-                const service = await server.getPrimaryService(SERVICE_UUID);
-                driveChar = await service.getCharacteristic(DRIVE_UUID);
-                servoChar = await service.getCharacteristic(SERVO_UUID);
-                document.getElementById('controls').style.display = 'block';
-                alert("Connected!");
-            } catch (error) { console.log(error); }
-        }
-
+    try {
+        console.log("Requesting Bluetooth Device...");
+        const device = await navigator.bluetooth.requestDevice({
+            filters: [{ namePrefix: 'Lazy Queen' }], // Uses prefix to be safer
+            optionalServices: [SERVICE_UUID]
+        });
+        
+        console.log("Connecting to GATT Server...");
+        const server = await device.gatt.connect();
+        
+        console.log("Getting Service...");
+        const service = await server.getPrimaryService(SERVICE_UUID);
+        
+        driveChar = await service.getCharacteristic(DRIVE_UUID);
+        servoChar = await service.getCharacteristic(SERVO_UUID);
+        
+        document.getElementById('controls').style.display = 'block';
+        alert("Connected successfully!");
+    } catch (error) {
+        console.error("Connection failed!", error);
+        alert("Error: " + error.message); // This will tell us the exact problem
+    }
+}
         function sendDrive(cmd) {
             if (driveChar) driveChar.writeValue(new TextEncoder().encode(cmd));
         }
