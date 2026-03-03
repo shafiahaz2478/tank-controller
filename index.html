@@ -1,27 +1,98 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-    <title>ESP32 Robot Control</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Lazy Queen BLE Controller</title>
     <style>
-        body { font-family: Arial; text-align: center; background: #222; color: white; }
-        .btn { padding: 20px 40px; font-size: 20px; margin: 10px; cursor: pointer; border-radius: 10px; border: none; }
-        .drive-btn { background: #444; color: white; }
-        .connect-btn { background: #28a745; color: white; }
-        input[type=range] { width: 80%; margin-top: 30px; }
+        body { 
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
+            text-align: center; 
+            background: #1a1a1a; 
+            color: #e0e0e0; 
+            margin: 0;
+            padding: 20px;
+            user-select: none; 
+            touch-action: manipulation; 
+            -webkit-user-select: none;
+        }
+
+        h1 { color: #28a745; margin-bottom: 30px; }
+
+        .btn { 
+            display: inline-block;
+            padding: 25px; 
+            font-size: 28px; 
+            margin: 10px; 
+            width: 90px;
+            height: 90px;
+            cursor: pointer; 
+            border-radius: 20px; 
+            border: none; 
+            background: #333;
+            color: white;
+            box-shadow: 0 4px #111;
+            transition: all 0.1s;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        .btn:active {
+            background: #444;
+            box-shadow: 0 0 #111;
+            transform: translateY(4px);
+        }
+
+        .connect-btn { 
+            background: #28a745; 
+            width: 220px; 
+            height: auto; 
+            font-size: 20px; 
+            padding: 15px;
+            margin-bottom: 40px;
+            box-shadow: 0 4px #155d27;
+        }
+
+        .connect-btn:active { box-shadow: 0 0 #155d27; }
+
+        #controls { margin-top: 20px; }
+
+        .slider-container {
+            margin: 50px auto;
+            width: 80%;
+            max-width: 400px;
+        }
+
+        input[type=range] {
+            width: 100%;
+            height: 15px;
+            border-radius: 5px;
+            background: #444;
+            outline: none;
+            accent-color: #28a745;
+        }
+
+        .status { color: #888; font-size: 14px; margin-top: 10px; }
     </style>
 </head>
 <body>
+
     <h1>Robot Dashboard</h1>
-    <button class="btn connect-btn" onclick="connectBLE()">Connect Robot</button>
+    
+    <button id="connectBtn" class="btn connect-btn" onclick="connectBLE()">CONNECT ROBOT</button>
+    <div id="status" class="status">Status: Disconnected</div>
+
     <div id="controls" style="display:none;">
-        <p>Driving Control</p>
-        <button class="btn drive-btn" onmousedown="sendDrive('F')" onmouseup="sendDrive('S')">UP</button><br>
-        <button class="btn drive-btn" onmousedown="sendDrive('L')" onmouseup="sendDrive('S')">LEFT</button>
-        <button class="btn drive-btn" onmousedown="sendDrive('R')" onmouseup="sendDrive('S')">RIGHT</button><br>
-        <button class="btn drive-btn" onmousedown="sendDrive('B')" onmouseup="sendDrive('S')">DOWN</button>
-        
-        <p>Servo Angle: <span id="angleVal">90</span>°</p>
-        <input type="range" min="0" max="180" value="90" oninput="updateServo(this.value)">
+        <div class="drive-grid">
+            <button class="btn" ontouchstart="sendDrive('F')" ontouchend="sendDrive('S')">▲</button><br>
+            <button class="btn" ontouchstart="sendDrive('L')" ontouchend="sendDrive('S')">◀</button>
+            <button class="btn" ontouchstart="sendDrive('R')" ontouchend="sendDrive('S')">▶</button><br>
+            <button class="btn" ontouchstart="sendDrive('B')" ontouchend="sendDrive('S')">▼</button>
+        </div>
+
+        <div class="slider-container">
+            <p>Servo Position: <span id="angleVal">90</span>°</p>
+            <input type="range" min="0" max="180" value="90" oninput="updateServo(this.value)">
+        </div>
     </div>
 
     <script>
@@ -31,36 +102,56 @@
         const SERVO_UUID   = "82250682-3b71-405e-ad61-344406560447";
 
         async function connectBLE() {
-    try {
-        console.log("Requesting Bluetooth Device...");
-        const device = await navigator.bluetooth.requestDevice({
-            filters: [{ namePrefix: 'Lazy Queen' }], // Uses prefix to be safer
-            optionalServices: [SERVICE_UUID]
-        });
-        
-        console.log("Connecting to GATT Server...");
-        const server = await device.gatt.connect();
-        
-        console.log("Getting Service...");
-        const service = await server.getPrimaryService(SERVICE_UUID);
-        
-        driveChar = await service.getCharacteristic(DRIVE_UUID);
-        servoChar = await service.getCharacteristic(SERVO_UUID);
-        
-        document.getElementById('controls').style.display = 'block';
-        alert("Connected successfully!");
-    } catch (error) {
-        console.error("Connection failed!", error);
-        alert("Error: " + error.message); // This will tell us the exact problem
-    }
-}
+            const statusDiv = document.getElementById('status');
+            try {
+                statusDiv.innerText = "Status: Searching...";
+                
+                // Web Bluetooth requires a user gesture to trigger
+                const device = await navigator.bluetooth.requestDevice({
+                    filters: [{ name: 'Lazy Queen BLE' }],
+                    optionalServices: [SERVICE_UUID]
+                });
+
+                statusDiv.innerText = "Status: Connecting...";
+                const server = await device.gatt.connect();
+                const service = await server.getPrimaryService(SERVICE_UUID);
+                
+                driveChar = await service.getCharacteristic(DRIVE_UUID);
+                servoChar = await service.getCharacteristic(SERVO_UUID);
+
+                document.getElementById('controls').style.display = 'block';
+                document.getElementById('connectBtn').style.display = 'none';
+                statusDiv.innerText = "Status: Connected to Lazy Queen";
+                
+                // Handle accidental disconnection
+                device.addEventListener('gattserverdisconnected', () => {
+                    alert("Robot Disconnected!");
+                    location.reload();
+                });
+
+            } catch (error) {
+                console.error(error);
+                statusDiv.innerText = "Status: Error - " + error.message;
+                alert("Connection failed: " + error.message);
+            }
+        }
+
+        // Sends command only when touched, stops when released
         function sendDrive(cmd) {
-            if (driveChar) driveChar.writeValue(new TextEncoder().encode(cmd));
+            if (driveChar) {
+                const encoder = new TextEncoder();
+                driveChar.writeValue(encoder.encode(cmd))
+                    .catch(err => console.log("Drive Error:", err));
+            }
         }
 
         function updateServo(val) {
             document.getElementById('angleVal').innerText = val;
-            if (servoChar) servoChar.writeValue(new TextEncoder().encode(val));
+            if (servoChar) {
+                const encoder = new TextEncoder();
+                servoChar.writeValue(encoder.encode(val))
+                    .catch(err => console.log("Servo Error:", err));
+            }
         }
     </script>
 </body>
